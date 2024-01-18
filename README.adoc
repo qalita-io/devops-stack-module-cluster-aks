@@ -1,0 +1,631 @@
+= devops-stack-module-cluster-aks
+
+A https://devops-stack.io[DevOps Stack] module to deploy a Kubernetes cluster on Azure AKS.
+
+This module uses the https://registry.terraform.io/modules/terraform-azurerm/aks/azurerm/latest[Terraform module "aks" by Azure] to in order to deploy and manage an AKS cluster. It was created in order to also manage other resources required by the DevOps Stack, such as the DNS records, resource group and subnet specific to the cluster created (these resources are helpful for the blue/green upgrading strategy). The module also provides the necessary outputs to be used by the other DevOps Stack modules.
+
+By default, this module creates the AKS control plane and a default node pool composed of 3 nodes of the type `Standard_D2s_v3`. If no version is specified, the AKS cluster and node pool will be created with the latest available version.
+
+[NOTE]
+====
+The variable `kubernetes_version` sets the version of the AKS control plane while the `orchestrator_version` variable sets the version of the default node pool.
+
+The `node_pools` variable allows you to define the extra node pools you want deployed besides the default one. For each extra node pool you can also define the version of Kubernetes to use with the `orchestrator_version` variable.
+
+Note that the versions of the node pools cannot be higher than the control plane.
+====
+
+== Usage
+
+This module can be used with the following declaration:
+
+[source,terraform]
+----
+module "aks" {
+  source = "git::https://github.com/camptocamp/devops-stack-module-cluster-aks.git?ref=<RELEASE>"
+
+  cluster_name         = local.cluster_name
+  base_domain          = local.base_domain
+  location             = resource.azurerm_resource_group.main.location
+  resource_group_name  = resource.azurerm_resource_group.main.name
+  virtual_network_name = resource.azurerm_virtual_network.this.name
+  cluster_subnet       = local.cluster_subnet
+
+  kubernetes_version        = local.kubernetes_version
+  sku_tier                  = local.sku_tier
+ 
+  rbac_aad_admin_group_object_ids = [
+    ENTRA_ID_GROUP_UUID,
+  ]
+
+  depends_on = [resource.azurerm_resource_group.main]
+----
+
+Multiple node pools can be defined with the `node_pools` variable:
+
+[source,terraform]
+----
+module "aks" {
+  source = "git::https://github.com/camptocamp/devops-stack-module-cluster-aks.git?ref=<RELEASE>"
+
+  cluster_name         = local.cluster_name
+  base_domain          = local.base_domain
+  location             = resource.azurerm_resource_group.main.location
+  resource_group_name  = resource.azurerm_resource_group.main.name
+  virtual_network_name = resource.azurerm_virtual_network.this.name
+  cluster_subnet       = local.cluster_subnet
+
+  kubernetes_version        = local.kubernetes_version
+  sku_tier                  = local.sku_tier
+
+  rbac_aad_admin_group_object_ids = [
+    ENTRA_ID_GROUP_UUID,
+  ]
+
+  # Extra node pools
+  node_pools = {
+    extra = {
+      vm_size = "Standard_D2s_v3"
+      node_count = 2
+    },
+  }
+
+  depends_on = [resource.azurerm_resource_group.main]
+}
+
+----
+
+=== Upgrading the Kubernetes cluster
+
+From our experience, usually, enabling the auto-upgrades is a good practice, but up to a point. We recommend enabling the auto-upgrades for the control plane and the node pools.
+
+To upgrade between minor versions, you are required to first upgrade the control plane and then the node pools. This is because the node pools cannot be of a higher version than the control plane.
+
+[WARNING]
+====
+If using the `orchestrator_version` variable for the default or extra node pools, unfortunately, for reasons that escape our comprehension, the upgrade of the control plane through the Terraform code will not work. You would have to manually upgrade the control plane through the Azure portal.
+
+This is why we recommend leaving the `orchestrator_version` variables as `null` and follow the procedure below.
+====
+
+Our recommended procedure for upgrading the cluster is as follows:
+
+1. Ensure that the `orchestrator_version` is not set in any part of your code.
+
+2. Go to the Azure portal and select your cluster. Then on the overview tab, click on the version of the control plane ans you should see a page like below. Click on _Upgrade version_.
++
+image::https://raw.githubusercontent.com/camptocamp/devops-stack-module-cluster-aks/main/docs/modules/ROOT/assets/images/upgrade_version_select.png[link=https://raw.githubusercontent.com/camptocamp/devops-stack-module-cluster-aks/main/docs/modules/ROOT/assets/images/upgrade_version_select.png,window=_blank]
+
+3. Afterwards, on the next screen, select the next minor version, make sure you've selected to upgrade the control plane and all the node pools, then start.
++
+image:https://raw.githubusercontent.com/camptocamp/devops-stack-module-cluster-aks/main/docs/modules/ROOT/assets/images/upgrade_version_select_all_node_pools.png[link=https://raw.githubusercontent.com/camptocamp/devops-stack-module-applicationset/main/docs/modules/ROOT/assets/images/upgrade_version_select_all_node_pools.png,window=_blank]
+
+4. Wait for all the components to finish the upgrade. Then, you can set the `kubernetes_version` variable to the minor version which you've just upgraded to and apply the Terraform code. This will reconcile the Terraform state with the actual state of the cluster.
+
+=== Automatic cluster upgrades
+
+You can enable automatic upgrades of the control plane and node pools by setting the `automatic_channel_upgrade` variable to a desired value. This will automatically upgrade the control plane and node pools to the latest available version given the constraints you defined in said variable. You can also specify the `maintenance_window` variable to set a maintenance window for the upgrades.
+
+An example of this settings is as follows:
+
+[source,terraform]
+----
+  automatic_channel_upgrade = "patch"
+  maintenance_window = {
+    allowed = [
+      {
+        day   = "Sunday",
+        hours = [22, 23]
+      },
+    ]
+    not_allowed = []
+  }
+----
+
+You can also set the `node_os_channel_upgrade` variable and `maintenance_window_node_os` variables to upgrade the Kubernetes Cluster Nodes' OS Image.
+
+== Technical Reference
+
+// BEGIN_TF_DOCS
+=== Requirements
+
+The following requirements are needed by this module:
+
+- [[requirement_azurerm]] <<requirement_azurerm,azurerm>> (>= 3.81.0)
+
+=== Providers
+
+The following providers are used by this module:
+
+- [[provider_azurerm]] <<provider_azurerm,azurerm>> (>= 3.81.0)
+
+=== Modules
+
+The following Modules are called:
+
+==== [[module_cluster]] <<module_cluster,cluster>>
+
+Source: Azure/aks/azurerm
+
+Version: ~> 7.0
+
+=== Resources
+
+The following resources are used by this module:
+
+- https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/dns_cname_record[azurerm_dns_cname_record.this] (resource)
+- https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group[azurerm_resource_group.this] (resource)
+- https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/subnet[azurerm_subnet.this] (resource)
+- https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/data-sources/dns_zone[azurerm_dns_zone.this] (data source)
+
+=== Required Inputs
+
+The following input variables are required:
+
+==== [[input_cluster_name]] <<input_cluster_name,cluster_name>>
+
+Description: The name of the Kubernetes cluster to create.
+
+Type: `string`
+
+==== [[input_base_domain]] <<input_base_domain,base_domain>>
+
+Description: The base domain used for Ingresses. If not provided, nip.io will be used taking the NLB IP address.
+
+Type: `string`
+
+==== [[input_location]] <<input_location,location>>
+
+Description: The location where the Kubernetes cluster will be created along side with it's own resource group and associated resources.
+
+Type: `string`
+
+==== [[input_resource_group_name]] <<input_resource_group_name,resource_group_name>>
+
+Description: The name of the common resource group (for example, where the virtual network and the DNS zone resides).
+
+Type: `string`
+
+==== [[input_virtual_network_name]] <<input_virtual_network_name,virtual_network_name>>
+
+Description: The name of the virtual network where to deploy the cluster.
+
+Type: `string`
+
+==== [[input_cluster_subnet]] <<input_cluster_subnet,cluster_subnet>>
+
+Description: The subnet CIDR where to deploy the cluster, included in the virtual network created.
+
+Type: `string`
+
+=== Optional Inputs
+
+The following input variables are optional (have default values):
+
+==== [[input_dns_zone_resource_group_name]] <<input_dns_zone_resource_group_name,dns_zone_resource_group_name>>
+
+Description: The name of the resource group which contains the DNS zone for the base domain.
+
+Type: `string`
+
+Default: `"default"`
+
+==== [[input_sku_tier]] <<input_sku_tier,sku_tier>>
+
+Description: The SKU Tier that should be used for this Kubernetes Cluster. Possible values are `Free` and `Standard`
+
+Type: `string`
+
+Default: `"Free"`
+
+==== [[input_kubernetes_version]] <<input_kubernetes_version,kubernetes_version>>
+
+Description: The Kubernetes version to use on the control-plane.
+
+Type: `string`
+
+Default: `"1.28"`
+
+==== [[input_automatic_channel_upgrade]] <<input_automatic_channel_upgrade,automatic_channel_upgrade>>
+
+Description: The upgrade channel for this Kubernetes Cluster. Possible values are `patch`, `rapid`, `node-image` and `stable`. By default automatic-upgrades are turned off. Note that you cannot specify the patch version using `kubernetes_version` or `orchestrator_version` when using the `patch` upgrade channel. See https://learn.microsoft.com/en-us/azure/aks/auto-upgrade-cluster[the documentation] for more information.
+
+Type: `string`
+
+Default: `null`
+
+==== [[input_maintenance_window]] <<input_maintenance_window,maintenance_window>>
+
+Description: Maintenance window configuration of the managed cluster. Only has an effect if the automatic upgrades are enabled using the variable `automatic_channel_upgrade`. Please check the variable of the same name https://github.com/Azure/terraform-azurerm-aks/blob/main/variables.tf[on the original module] for more information and to see the required values.
+
+Type: `any`
+
+Default: `null`
+
+==== [[input_node_os_channel_upgrade]] <<input_node_os_channel_upgrade,node_os_channel_upgrade>>
+
+Description: The upgrade channel for this Kubernetes Cluster Nodes' OS Image. Possible values are `Unmanaged`, `SecurityPatch`, `NodeImage` and `None`.
+
+Type: `string`
+
+Default: `null`
+
+==== [[input_maintenance_window_node_os]] <<input_maintenance_window_node_os,maintenance_window_node_os>>
+
+Description: Maintenance window configuration for this Kubernetes Cluster Nodes' OS Image. Only has an effect if the automatic upgrades are enabled using the variable `node_os_channel_upgrade`. Please check the variable of the same name https://github.com/Azure/terraform-azurerm-aks/blob/main/variables.tf[on the original module] for more information and to see the required values.
+
+Type: `any`
+
+Default: `null`
+
+==== [[input_network_policy]] <<input_network_policy,network_policy>>
+
+Description: Sets up network policy to be used with Azure CNI. https://docs.microsoft.com/azure/aks/use-network-policies[Network policy allows us to control the traffic flow between pods.] Currently supported values are `calico` and `azure`. Changing this forces a new resource to be created.
+
+Type: `string`
+
+Default: `"azure"`
+
+==== [[input_rbac_aad_admin_group_object_ids]] <<input_rbac_aad_admin_group_object_ids,rbac_aad_admin_group_object_ids>>
+
+Description: Object IDs of groups with administrator access to the cluster.
+
+Type: `list(string)`
+
+Default: `null`
+
+==== [[input_tags]] <<input_tags,tags>>
+
+Description: Any tags that should be present on the AKS cluster resources.
+
+Type: `map(string)`
+
+Default: `{}`
+
+==== [[input_agents_pool_name]] <<input_agents_pool_name,agents_pool_name>>
+
+Description: The default Azure AKS node pool name.
+
+Type: `string`
+
+Default: `"default"`
+
+==== [[input_agents_labels]] <<input_agents_labels,agents_labels>>
+
+Description: A map of Kubernetes labels which should be applied to nodes in the default node pool. Changing this forces a new resource to be created.
+
+Type: `map(string)`
+
+Default: `{}`
+
+==== [[input_agents_size]] <<input_agents_size,agents_size>>
+
+Description: The default virtual machine size for the Kubernetes agents. Changing this without specifying `var.temporary_name_for_rotation` forces a new resource to be created.
+
+Type: `string`
+
+Default: `"Standard_D2s_v3"`
+
+==== [[input_agents_count]] <<input_agents_count,agents_count>>
+
+Description: The number of nodes that should exist in the default node pool.
+
+Type: `number`
+
+Default: `3`
+
+==== [[input_agents_max_pods]] <<input_agents_max_pods,agents_max_pods>>
+
+Description: The maximum number of pods that can run on each agent. Changing this forces a new resource to be created.
+
+Type: `number`
+
+Default: `null`
+
+==== [[input_agents_pool_max_surge]] <<input_agents_pool_max_surge,agents_pool_max_surge>>
+
+Description: The maximum number or percentage of nodes which will be added to the default node pool size during an upgrade.
+
+Type: `string`
+
+Default: `"10%"`
+
+==== [[input_temporary_name_for_rotation]] <<input_temporary_name_for_rotation,temporary_name_for_rotation>>
+
+Description: Specifies the name of the temporary node pool used to cycle the default node pool for VM resizing. The `var.agents_size` is no longer ForceNew and can be resized by specifying `temporary_name_for_rotation`.
+
+Type: `string`
+
+Default: `null`
+
+==== [[input_orchestrator_version]] <<input_orchestrator_version,orchestrator_version>>
+
+Description: The Kubernetes version to use for the default node pool. If undefined, defaults to the most recent version available on Azure.
+
+Type: `string`
+
+Default: `null`
+
+==== [[input_os_disk_size_gb]] <<input_os_disk_size_gb,os_disk_size_gb>>
+
+Description: Disk size for default node pool nodes in GBs. The disk type created is by default `Managed`.
+
+Type: `number`
+
+Default: `50`
+
+==== [[input_node_pools]] <<input_node_pools,node_pools>>
+
+Description: A map of node pools that need to be created and attached on the Kubernetes cluster. The key of the map can be the name of the node pool, and the key must be a static string. The required value for the map is a `node_pool` block as defined in the variable of the same name present in the original module, available https://github.com/Azure/terraform-azurerm-aks/blob/main/variables.tf[here].
+
+Type: `any`
+
+Default: `{}`
+
+=== Outputs
+
+The following outputs are exported:
+
+==== [[output_cluster_name]] <<output_cluster_name,cluster_name>>
+
+Description: Name of the AKS cluster.
+
+==== [[output_base_domain]] <<output_base_domain,base_domain>>
+
+Description: The base domain for the cluster.
+
+==== [[output_cluster_oidc_issuer_url]] <<output_cluster_oidc_issuer_url,cluster_oidc_issuer_url>>
+
+Description: The URL on the EKS cluster for the OpenID Connect identity provider
+
+==== [[output_node_resource_group_name]] <<output_node_resource_group_name,node_resource_group_name>>
+
+Description: The name of the resource group in which the cluster was created.
+
+==== [[output_kubernetes_host]] <<output_kubernetes_host,kubernetes_host>>
+
+Description: Endpoint for your Kubernetes API server.
+
+==== [[output_kubernetes_username]] <<output_kubernetes_username,kubernetes_username>>
+
+Description: Username for Kubernetes basic auth.
+
+==== [[output_kubernetes_password]] <<output_kubernetes_password,kubernetes_password>>
+
+Description: Password for Kubernetes basic auth.
+
+==== [[output_kubernetes_cluster_ca_certificate]] <<output_kubernetes_cluster_ca_certificate,kubernetes_cluster_ca_certificate>>
+
+Description: Certificate data required to communicate with the cluster.
+
+==== [[output_kubernetes_client_key]] <<output_kubernetes_client_key,kubernetes_client_key>>
+
+Description: Certificate Client Key required to communicate with the cluster.
+
+==== [[output_kubernetes_client_certificate]] <<output_kubernetes_client_certificate,kubernetes_client_certificate>>
+
+Description: Certificate Client Certificate required to communicate with the cluster.
+// END_TF_DOCS
+
+=== Reference in table format 
+
+.Show tables
+[%collapsible]
+====
+// BEGIN_TF_TABLES
+= Requirements
+
+[cols="a,a",options="header,autowidth"]
+|===
+|Name |Version
+|[[requirement_azurerm]] <<requirement_azurerm,azurerm>> |>= 3.81.0
+|===
+
+= Providers
+
+[cols="a,a",options="header,autowidth"]
+|===
+|Name |Version
+|[[provider_azurerm]] <<provider_azurerm,azurerm>> |>= 3.81.0
+|===
+
+= Modules
+
+[cols="a,a,a",options="header,autowidth"]
+|===
+|Name |Source |Version
+|[[module_cluster]] <<module_cluster,cluster>> |Azure/aks/azurerm |~> 7.0
+|===
+
+= Resources
+
+[cols="a,a",options="header,autowidth"]
+|===
+|Name |Type
+|https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/dns_cname_record[azurerm_dns_cname_record.this] |resource
+|https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group[azurerm_resource_group.this] |resource
+|https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/subnet[azurerm_subnet.this] |resource
+|https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/data-sources/dns_zone[azurerm_dns_zone.this] |data source
+|===
+
+= Inputs
+
+[cols="a,a,a,a,a",options="header,autowidth"]
+|===
+|Name |Description |Type |Default |Required
+|[[input_cluster_name]] <<input_cluster_name,cluster_name>>
+|The name of the Kubernetes cluster to create.
+|`string`
+|n/a
+|yes
+
+|[[input_base_domain]] <<input_base_domain,base_domain>>
+|The base domain used for Ingresses. If not provided, nip.io will be used taking the NLB IP address.
+|`string`
+|n/a
+|yes
+
+|[[input_location]] <<input_location,location>>
+|The location where the Kubernetes cluster will be created along side with it's own resource group and associated resources.
+|`string`
+|n/a
+|yes
+
+|[[input_resource_group_name]] <<input_resource_group_name,resource_group_name>>
+|The name of the common resource group (for example, where the virtual network and the DNS zone resides).
+|`string`
+|n/a
+|yes
+
+|[[input_dns_zone_resource_group_name]] <<input_dns_zone_resource_group_name,dns_zone_resource_group_name>>
+|The name of the resource group which contains the DNS zone for the base domain.
+|`string`
+|`"default"`
+|no
+
+|[[input_sku_tier]] <<input_sku_tier,sku_tier>>
+|The SKU Tier that should be used for this Kubernetes Cluster. Possible values are `Free` and `Standard`
+|`string`
+|`"Free"`
+|no
+
+|[[input_kubernetes_version]] <<input_kubernetes_version,kubernetes_version>>
+|The Kubernetes version to use on the control-plane.
+|`string`
+|`"1.28"`
+|no
+
+|[[input_automatic_channel_upgrade]] <<input_automatic_channel_upgrade,automatic_channel_upgrade>>
+|The upgrade channel for this Kubernetes Cluster. Possible values are `patch`, `rapid`, `node-image` and `stable`. By default automatic-upgrades are turned off. Note that you cannot specify the patch version using `kubernetes_version` or `orchestrator_version` when using the `patch` upgrade channel. See https://learn.microsoft.com/en-us/azure/aks/auto-upgrade-cluster[the documentation] for more information.
+|`string`
+|`null`
+|no
+
+|[[input_maintenance_window]] <<input_maintenance_window,maintenance_window>>
+|Maintenance window configuration of the managed cluster. Only has an effect if the automatic upgrades are enabled using the variable `automatic_channel_upgrade`. Please check the variable of the same name https://github.com/Azure/terraform-azurerm-aks/blob/main/variables.tf[on the original module] for more information and to see the required values.
+|`any`
+|`null`
+|no
+
+|[[input_node_os_channel_upgrade]] <<input_node_os_channel_upgrade,node_os_channel_upgrade>>
+|The upgrade channel for this Kubernetes Cluster Nodes' OS Image. Possible values are `Unmanaged`, `SecurityPatch`, `NodeImage` and `None`.
+|`string`
+|`null`
+|no
+
+|[[input_maintenance_window_node_os]] <<input_maintenance_window_node_os,maintenance_window_node_os>>
+|Maintenance window configuration for this Kubernetes Cluster Nodes' OS Image. Only has an effect if the automatic upgrades are enabled using the variable `node_os_channel_upgrade`. Please check the variable of the same name https://github.com/Azure/terraform-azurerm-aks/blob/main/variables.tf[on the original module] for more information and to see the required values.
+|`any`
+|`null`
+|no
+
+|[[input_virtual_network_name]] <<input_virtual_network_name,virtual_network_name>>
+|The name of the virtual network where to deploy the cluster.
+|`string`
+|n/a
+|yes
+
+|[[input_cluster_subnet]] <<input_cluster_subnet,cluster_subnet>>
+|The subnet CIDR where to deploy the cluster, included in the virtual network created.
+|`string`
+|n/a
+|yes
+
+|[[input_network_policy]] <<input_network_policy,network_policy>>
+|Sets up network policy to be used with Azure CNI. https://docs.microsoft.com/azure/aks/use-network-policies[Network policy allows us to control the traffic flow between pods.] Currently supported values are `calico` and `azure`. Changing this forces a new resource to be created.
+|`string`
+|`"azure"`
+|no
+
+|[[input_rbac_aad_admin_group_object_ids]] <<input_rbac_aad_admin_group_object_ids,rbac_aad_admin_group_object_ids>>
+|Object IDs of groups with administrator access to the cluster.
+|`list(string)`
+|`null`
+|no
+
+|[[input_tags]] <<input_tags,tags>>
+|Any tags that should be present on the AKS cluster resources.
+|`map(string)`
+|`{}`
+|no
+
+|[[input_agents_pool_name]] <<input_agents_pool_name,agents_pool_name>>
+|The default Azure AKS node pool name.
+|`string`
+|`"default"`
+|no
+
+|[[input_agents_labels]] <<input_agents_labels,agents_labels>>
+|A map of Kubernetes labels which should be applied to nodes in the default node pool. Changing this forces a new resource to be created.
+|`map(string)`
+|`{}`
+|no
+
+|[[input_agents_size]] <<input_agents_size,agents_size>>
+|The default virtual machine size for the Kubernetes agents. Changing this without specifying `var.temporary_name_for_rotation` forces a new resource to be created.
+|`string`
+|`"Standard_D2s_v3"`
+|no
+
+|[[input_agents_count]] <<input_agents_count,agents_count>>
+|The number of nodes that should exist in the default node pool.
+|`number`
+|`3`
+|no
+
+|[[input_agents_max_pods]] <<input_agents_max_pods,agents_max_pods>>
+|The maximum number of pods that can run on each agent. Changing this forces a new resource to be created.
+|`number`
+|`null`
+|no
+
+|[[input_agents_pool_max_surge]] <<input_agents_pool_max_surge,agents_pool_max_surge>>
+|The maximum number or percentage of nodes which will be added to the default node pool size during an upgrade.
+|`string`
+|`"10%"`
+|no
+
+|[[input_temporary_name_for_rotation]] <<input_temporary_name_for_rotation,temporary_name_for_rotation>>
+|Specifies the name of the temporary node pool used to cycle the default node pool for VM resizing. The `var.agents_size` is no longer ForceNew and can be resized by specifying `temporary_name_for_rotation`.
+|`string`
+|`null`
+|no
+
+|[[input_orchestrator_version]] <<input_orchestrator_version,orchestrator_version>>
+|The Kubernetes version to use for the default node pool. If undefined, defaults to the most recent version available on Azure.
+|`string`
+|`null`
+|no
+
+|[[input_os_disk_size_gb]] <<input_os_disk_size_gb,os_disk_size_gb>>
+|Disk size for default node pool nodes in GBs. The disk type created is by default `Managed`.
+|`number`
+|`50`
+|no
+
+|[[input_node_pools]] <<input_node_pools,node_pools>>
+|A map of node pools that need to be created and attached on the Kubernetes cluster. The key of the map can be the name of the node pool, and the key must be a static string. The required value for the map is a `node_pool` block as defined in the variable of the same name present in the original module, available https://github.com/Azure/terraform-azurerm-aks/blob/main/variables.tf[here].
+|`any`
+|`{}`
+|no
+
+|===
+
+= Outputs
+
+[cols="a,a",options="header,autowidth"]
+|===
+|Name |Description
+|[[output_cluster_name]] <<output_cluster_name,cluster_name>> |Name of the AKS cluster.
+|[[output_base_domain]] <<output_base_domain,base_domain>> |The base domain for the cluster.
+|[[output_cluster_oidc_issuer_url]] <<output_cluster_oidc_issuer_url,cluster_oidc_issuer_url>> |The URL on the EKS cluster for the OpenID Connect identity provider
+|[[output_node_resource_group_name]] <<output_node_resource_group_name,node_resource_group_name>> |The name of the resource group in which the cluster was created.
+|[[output_kubernetes_host]] <<output_kubernetes_host,kubernetes_host>> |Endpoint for your Kubernetes API server.
+|[[output_kubernetes_username]] <<output_kubernetes_username,kubernetes_username>> |Username for Kubernetes basic auth.
+|[[output_kubernetes_password]] <<output_kubernetes_password,kubernetes_password>> |Password for Kubernetes basic auth.
+|[[output_kubernetes_cluster_ca_certificate]] <<output_kubernetes_cluster_ca_certificate,kubernetes_cluster_ca_certificate>> |Certificate data required to communicate with the cluster.
+|[[output_kubernetes_client_key]] <<output_kubernetes_client_key,kubernetes_client_key>> |Certificate Client Key required to communicate with the cluster.
+|[[output_kubernetes_client_certificate]] <<output_kubernetes_client_certificate,kubernetes_client_certificate>> |Certificate Client Certificate required to communicate with the cluster.
+|===
+// END_TF_TABLES
+====
