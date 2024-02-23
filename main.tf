@@ -4,7 +4,7 @@ data "azurerm_dns_zone" "this" {
 }
 
 resource "azurerm_dns_cname_record" "this" {
-  name                = format("*.apps.%s", var.cluster_name)
+  name                = format("*.%s", trimprefix("${var.subdomain}.${var.cluster_name}", "."))
   zone_name           = data.azurerm_dns_zone.this.name
   resource_group_name = var.dns_zone_resource_group_name
   ttl                 = 300

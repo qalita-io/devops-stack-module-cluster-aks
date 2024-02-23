@@ -8,8 +8,15 @@ variable "cluster_name" {
 }
 
 variable "base_domain" {
-  description = "The base domain used for Ingresses. If not provided, nip.io will be used taking the NLB IP address."
+  description = "The base domain used for ingresses. If not provided, nip.io will be used taking the NLB IP address."
   type        = string
+}
+
+variable "subdomain" {
+  description = "The subdomain used for ingresses."
+  type        = string
+  default     = "apps"
+  nullable    = false
 }
 
 variable "location" {

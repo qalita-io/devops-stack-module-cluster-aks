@@ -170,7 +170,7 @@ Type: `string`
 
 ==== [[input_base_domain]] <<input_base_domain,base_domain>>
 
-Description: The base domain used for Ingresses. If not provided, nip.io will be used taking the NLB IP address.
+Description: The base domain used for ingresses. If not provided, nip.io will be used taking the NLB IP address.
 
 Type: `string`
 
@@ -201,6 +201,14 @@ Type: `string`
 === Optional Inputs
 
 The following input variables are optional (have default values):
+
+==== [[input_subdomain]] <<input_subdomain,subdomain>>
+
+Description: The subdomain used for ingresses.
+
+Type: `string`
+
+Default: `"apps"`
 
 ==== [[input_dns_zone_resource_group_name]] <<input_dns_zone_resource_group_name,dns_zone_resource_group_name>>
 
@@ -460,10 +468,16 @@ Description: Certificate Client Certificate required to communicate with the clu
 |yes
 
 |[[input_base_domain]] <<input_base_domain,base_domain>>
-|The base domain used for Ingresses. If not provided, nip.io will be used taking the NLB IP address.
+|The base domain used for ingresses. If not provided, nip.io will be used taking the NLB IP address.
 |`string`
 |n/a
 |yes
+
+|[[input_subdomain]] <<input_subdomain,subdomain>>
+|The subdomain used for ingresses.
+|`string`
+|`"apps"`
+|no
 
 |[[input_location]] <<input_location,location>>
 |The location where the Kubernetes cluster will be created along side with it's own resource group and associated resources.
