@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/camptocamp/devops-stack-module-cluster-aks/compare/v1.0.0...v1.1.0) (2024-02-23)
+
+
+### Features
+
+* add subdomain variable ([#3](https://github.com/camptocamp/devops-stack-module-cluster-aks/issues/3)) ([b8c60dd](https://github.com/camptocamp/devops-stack-module-cluster-aks/commit/b8c60dda6a67d21e1df4a25027de86299992bc00))
+
 ## 1.0.0 (2024-01-18)
 
 
