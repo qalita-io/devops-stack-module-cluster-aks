@@ -232,7 +232,7 @@ Description: The Kubernetes version to use on the control-plane.
 
 Type: `string`
 
-Default: `"1.28"`
+Default: `"1.29"`
 
 ==== [[input_automatic_channel_upgrade]] <<input_automatic_channel_upgrade,automatic_channel_upgrade>>
 
@@ -263,6 +263,14 @@ Default: `null`
 Description: Maintenance window configuration for this Kubernetes Cluster Nodes' OS Image. Only has an effect if the automatic upgrades are enabled using the variable `node_os_channel_upgrade`. Please check the variable of the same name https://github.com/Azure/terraform-azurerm-aks/blob/main/variables.tf[on the original module] for more information and to see the required values.
 
 Type: `any`
+
+Default: `null`
+
+==== [[input_virtual_network_resource_group_name]] <<input_virtual_network_resource_group_name,virtual_network_resource_group_name>>
+
+Description: The name of the resource group where the virtual network resides.
+
+Type: `string`
 
 Default: `null`
 
@@ -312,7 +320,7 @@ Description: The default virtual machine size for the Kubernetes agents. Changin
 
 Type: `string`
 
-Default: `"Standard_D2s_v3"`
+Default: `"Standard_D4s_v3"`
 
 ==== [[input_agents_count]] <<input_agents_count,agents_count>>
 
@@ -506,7 +514,7 @@ Description: Certificate Client Certificate required to communicate with the clu
 |[[input_kubernetes_version]] <<input_kubernetes_version,kubernetes_version>>
 |The Kubernetes version to use on the control-plane.
 |`string`
-|`"1.28"`
+|`"1.29"`
 |no
 
 |[[input_automatic_channel_upgrade]] <<input_automatic_channel_upgrade,automatic_channel_upgrade>>
@@ -538,6 +546,12 @@ Description: Certificate Client Certificate required to communicate with the clu
 |`string`
 |n/a
 |yes
+
+|[[input_virtual_network_resource_group_name]] <<input_virtual_network_resource_group_name,virtual_network_resource_group_name>>
+|The name of the resource group where the virtual network resides.
+|`string`
+|`null`
+|no
 
 |[[input_cluster_subnet]] <<input_cluster_subnet,cluster_subnet>>
 |The subnet CIDR where to deploy the cluster, included in the virtual network created.
@@ -578,7 +592,7 @@ Description: Certificate Client Certificate required to communicate with the clu
 |[[input_agents_size]] <<input_agents_size,agents_size>>
 |The default virtual machine size for the Kubernetes agents. Changing this without specifying `var.temporary_name_for_rotation` forces a new resource to be created.
 |`string`
-|`"Standard_D2s_v3"`
+|`"Standard_D4s_v3"`
 |no
 
 |[[input_agents_count]] <<input_agents_count,agents_count>>

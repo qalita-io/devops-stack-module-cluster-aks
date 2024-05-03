@@ -13,7 +13,7 @@ resource "azurerm_dns_cname_record" "this" {
 
 resource "azurerm_subnet" "this" {
   name                 = "${var.cluster_name}-snet"
-  resource_group_name  = var.resource_group_name
+  resource_group_name  = var.virtual_network_resource_group_name != null ? var.virtual_network_resource_group_name : var.resource_group_name
   address_prefixes     = [var.cluster_subnet]
   virtual_network_name = var.virtual_network_name
 }

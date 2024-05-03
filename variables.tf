@@ -49,7 +49,7 @@ variable "sku_tier" {
 variable "kubernetes_version" {
   description = "The Kubernetes version to use on the control-plane."
   type        = string
-  default     = "1.28"
+  default     = "1.29"
 }
 
 variable "automatic_channel_upgrade" {
@@ -93,6 +93,12 @@ variable "maintenance_window_node_os" {
 variable "virtual_network_name" {
   description = "The name of the virtual network where to deploy the cluster."
   type        = string
+}
+
+variable "virtual_network_resource_group_name" {
+  description = "The name of the resource group where the virtual network resides."
+  type        = string
+  default     = null
 }
 
 variable "cluster_subnet" {
@@ -145,7 +151,7 @@ variable "agents_labels" {
 variable "agents_size" {
   description = "The default virtual machine size for the Kubernetes agents. Changing this without specifying `var.temporary_name_for_rotation` forces a new resource to be created. " # TODO Add link to documentation to get available sizes
   type        = string
-  default     = "Standard_D2s_v3"
+  default     = "Standard_D4s_v3"
 }
 
 variable "agents_count" {
