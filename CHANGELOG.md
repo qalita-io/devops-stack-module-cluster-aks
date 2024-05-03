@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/camptocamp/devops-stack-module-cluster-aks/compare/v1.1.0...v1.2.0) (2024-05-03)
+
+
+### Features
+
+* upgrade K8s version, increase default node size and add variable to specify RG of the virtual network ([#5](https://github.com/camptocamp/devops-stack-module-cluster-aks/issues/5)) ([216149f](https://github.com/camptocamp/devops-stack-module-cluster-aks/commit/216149feded5e45187cfdc1c443fe0eaa5a3c8b3))
+
 ## [1.1.0](https://github.com/camptocamp/devops-stack-module-cluster-aks/compare/v1.0.0...v1.1.0) (2024-02-23)
 
 
