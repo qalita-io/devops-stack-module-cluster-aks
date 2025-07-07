@@ -40,7 +40,9 @@ module "cluster" {
   node_os_channel_upgrade    = var.node_os_channel_upgrade
   maintenance_window_node_os = var.maintenance_window_node_os
 
-  vnet_subnet                          = resource.azurerm_subnet.this.id
+  vnet_subnet = {
+    id = azurerm_subnet.this.id
+  }
   azure_policy_enabled                 = true
   cluster_log_analytics_workspace_name = var.cluster_name
   private_cluster_enabled              = false
