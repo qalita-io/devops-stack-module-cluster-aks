@@ -25,7 +25,7 @@ resource "azurerm_resource_group" "this" {
 
 module "cluster" {
   source  = "Azure/aks/azurerm"
-  version = "~> 7.0"
+  version = "~> 9.0"
 
   cluster_name        = var.cluster_name
   prefix              = var.cluster_name
