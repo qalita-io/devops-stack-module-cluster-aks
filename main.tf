@@ -26,6 +26,7 @@ resource "azurerm_resource_group" "this" {
 module "cluster" {
   source  = "Azure/aks/azurerm"
   version = "~> 10.0"
+  location = var.location
 
   cluster_name        = var.cluster_name
   prefix              = var.cluster_name
@@ -39,7 +40,6 @@ module "cluster" {
   node_os_channel_upgrade    = var.node_os_channel_upgrade
   maintenance_window_node_os = var.maintenance_window_node_os
 
-  vnet_subnet_id                       = resource.azurerm_subnet.this.id
   azure_policy_enabled                 = true
   cluster_log_analytics_workspace_name = var.cluster_name
   private_cluster_enabled              = false
@@ -50,7 +50,6 @@ module "cluster" {
   log_analytics_workspace_enabled    = false
   oidc_issuer_enabled                = true
   rbac_aad_admin_group_object_ids    = var.rbac_aad_admin_group_object_ids
-  rbac_aad_managed                   = true
   role_based_access_control_enabled  = true
   workload_identity_enabled          = true
 
